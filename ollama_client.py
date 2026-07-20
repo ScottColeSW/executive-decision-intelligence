@@ -1,73 +1,60 @@
-"""
-EDI Local Ollama Client
-
-Connects Executive Decision Intelligence
-to a local Ollama instance.
-"""
-
+import os
+import json
 import requests
-import yaml
+from pathlib import Path
 
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "llama3.2:latest"
 
-CONFIG_FILE = "config.yaml"
+# Path to the newly decoupled prompts configuration file
+PROMPTS_CONFIG_PATH = Path("data") / "prompts_config.json"
 
-
-def load_config():
-
-    with open(CONFIG_FILE, "r") as file:
-        return yaml.safe_load(file)
-
-
-config = load_config()
-
-OLLAMA_HOST = config["llm"]["host"]
-
-OLLAMA_URL = (
-    f"{OLLAMA_HOST}/api/generate"
-)
-
-MODEL = config["llm"]["model"]
-
+def load_prompts_config() -> dict:
+    """Loads prompt definitions and fallback responses from our JSON storage safely."""
+    if not PROMPTS_CONFIG_PATH.exists():
+        return {}
+    try:
+        with open(PROMPTS_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 def ask_ollama(prompt: str) -> str:
     """
-    Sends a prompt to local Ollama.
+    Queries local Ollama using the llama3.2:latest model.
+    Falls back to decoupled structured mock responses in the JSON file if offline.
     """
-
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False
+    }
+    
     try:
+        response = requests.post(OLLAMA_URL, json=payload, timeout=8)
+        if response.status_code == 200:
+            result_json = response.json()
+            return result_json.get("response", "No response content generated.")
+    except Exception:
+        pass
 
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": MODEL,
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=60
-        )
+    # --- OFFLINE SIMULATION FALLBACKS (Loaded from decoupled JSON) ---
+    config = load_prompts_config()
+    fallbacks = config.get("offline_fallbacks", {})
+    
+    # Identify target scenario key based on matching keywords in the active prompt
+    target_key = "default"
+    if "SME-CAPEX-001" in prompt or "Hydro-Jetter" in prompt:
+        target_key = "SME-CAPEX-001"
+    elif "SME-SUNK-002" in prompt or "E-Commerce" in prompt:
+        target_key = "SME-SUNK-002"
+    elif "SME-AI-003" in prompt or "Review Booster" in prompt:
+        target_key = "SME-AI-003"
 
-        response.raise_for_status()
+    case_fallbacks = fallbacks.get(target_key, fallbacks.get("default", {}))
 
-        data = response.json()
-
-        return data.get(
-            "response",
-            "No response returned from Ollama."
-        )
-
-
-    except requests.exceptions.ConnectionError:
-
-        return (
-            "EDI Analyst unavailable.\n\n"
-            "Ollama is not running.\n"
-            "Running deterministic analysis only."
-        )
-
-
-    except Exception as e:
-
-        return (
-            "EDI Analyst encountered an error:\n\n"
-            f"{str(e)}"
-        )
+    # Determine if we should return the focus group transcript or the standard executive summary
+    if "focus group" in prompt.lower() or "debate" in prompt.lower():
+        return case_fallbacks.get("focus_group", "No focus group simulation matches.")
+    
+    return case_fallbacks.get("executive_report", "No executive report matches.")

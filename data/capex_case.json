@@ -1,0 +1,23 @@
+{
+  "case_id": "SME-CAPEX-001",
+  "title": "Hydro-Jetter Service Van Expansion",
+  "case_type": "capex",
+  "description": "Purchase and outfitting of a secondary commercial service vehicle to clear local commercial and residential drain blockages, capturing unserviced high-margin demand.",
+  "financials": {
+    "initial_investment": 85000.0,
+    "projected_annual_return": 28000.0,
+    "sunk_costs_to_date": 0.0,
+    "time_horizon_years": 5,
+    "risk_adjusted_discount_rate": 0.07
+  },
+  "assumptions": [
+    "A qualified secondary technician can be hired and retained within the standard local wage bracket.",
+    "Commercial call volume holds steady at a minimum of 3 additional dispatched runs per week.",
+    "Vehicle maintenance costs follow standard commercial fleet mileage depreciation paths."
+  ],
+  "metadata": {
+    "asset_type": "Physical Equipment",
+    "capacity_increase": "Double Fleet Output",
+    "owner_focus": "Commercial Growth"
+  }
+}

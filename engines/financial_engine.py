@@ -1,38 +1,100 @@
-"""
-Deterministic Financial Engine
+from typing import List, Optional
+from pydantic import BaseModel, Field
+from models.decision_case import DecisionCase
 
-AI NEVER performs financial calculations.
-"""
-
+class FinancialAnalysisResult(BaseModel):
+    case_id: str
+    forward_npv: float = Field(..., description="NPV of future cash flows minus future investment")
+    total_project_npv: float = Field(..., description="NPV including sunk costs to date")
+    irr: Optional[float] = Field(None, description="Internal Rate of Return for forward cash flows")
+    forward_roi: float = Field(..., description="Return on investment based solely on forward capital")
+    total_roi: float = Field(..., description="Return on investment factoring in historical sunk costs")
+    payback_period_years: Optional[float] = Field(None, description="Time required to recover forward investment")
 
 class FinancialEngine:
+    """Processes DecisionCase models to output standardized corporate finance performance metrics."""
 
-    def calculate_roi(self, investment, annual_return):
+    @staticmethod
+    def _calculate_npv(rate: float, cash_flows: List[float]) -> float:
+        """Computes Net Present Value using the standard formula: $$NPV = \\sum_{t=0}^{N} \\frac{C_t}{(1 + r)^t}$$"""
+        return sum(cf / ((1 + rate) ** t) for t, cf in enumerate(cash_flows))
 
-        if investment == 0:
-            return 0
-
-        return round((annual_return / investment) * 100, 2)
-
-    def calculate_payback(self, investment, annual_return):
-
-        if annual_return <= 0:
+    @staticmethod
+    def _calculate_irr(cash_flows: List[float], max_iterations: int = 100) -> Optional[float]:
+        """Finds the Internal Rate of Return where NPV equals zero using the bisection method."""
+        # Simple validation: IRR requires at least one negative and one positive cash flow
+        if all(cf >= 0 for cf in cash_flows) or all(cf <= 0 for cf in cash_flows):
             return None
 
-        return round(investment / annual_return, 2)
+        low, high = -0.99, 5.0
+        tolerance = 1e-6
 
-    def calculate_npv(
-        self,
-        investment,
-        annual_return,
-        years=10,
-        discount_rate=.08
-    ):
+        # Check boundaries
+        def npv_at(r: float) -> float:
+            return sum(cf / ((1 + r) ** t) for t, cf in enumerate(cash_flows))
 
-        pv = 0
+        if npv_at(low) * npv_at(high) > 0:
+            high = 20.0  # Expand upper bound for hyper-profitable cases (e.g., small AI tool returns)
+            if npv_at(low) * npv_at(high) > 0:
+                return None
 
-        for year in range(1, years + 1):
+        for _ in range(max_iterations):
+            mid = (low + high) / 2.0
+            npv_mid = npv_at(mid)
 
-            pv += annual_return / ((1 + discount_rate) ** year)
+            if abs(npv_mid) < tolerance:
+                return mid
+            
+            if npv_at(low) * npv_mid < 0:
+                high = mid
+            else:
+                low = mid
 
-        return round(pv - investment, 2)
+        return (low + high) / 2.0
+
+    def analyze(self, case: DecisionCase) -> FinancialAnalysisResult:
+        """Executes full quantitative assessment on a given DecisionCase."""
+        f = case.financials
+        
+        # 1. Build cash flow streams
+        # Forward flows: year 0 is the fresh initial investment out
+        forward_flows = [-f.initial_investment] + [f.projected_annual_return or 0.0] * f.time_horizon_years
+        
+        # Total flows: treats sunk costs as an instantaneous loss incurred at Year 0 alongside new investment
+        total_investment = f.initial_investment + f.sunk_costs_to_date
+        total_flows = [-total_investment] + [f.projected_annual_return or 0.0] * f.time_horizon_years
+
+        # 2. Compute NPVs
+        forward_npv = self._calculate_npv(f.risk_adjusted_discount_rate, forward_flows)
+        total_project_npv = self._calculate_npv(f.risk_adjusted_discount_rate, total_flows)
+
+        # 3. Compute IRR (Forward-looking)
+        irr = self._calculate_irr(forward_flows)
+
+        # 4. Compute ROI Metrics
+        total_nominal_returns = (f.projected_annual_return or 0.0) * f.time_horizon_years
+        
+        forward_roi = (
+            (total_nominal_returns - f.initial_investment) / f.initial_investment 
+            if f.initial_investment > 0 else 0.0
+        )
+        
+        total_roi = (
+            (total_nominal_returns - total_investment) / total_investment 
+            if total_investment > 0 else 0.0
+        )
+
+        # 5. Compute Payback Period (Simple / Non-discounted)
+        payback = None
+        if f.projected_annual_return and f.projected_annual_return > 0:
+            payback = f.initial_investment / f.projected_annual_return
+
+        return FinancialAnalysisResult(
+            case_id=case.case_id,
+            forward_npv=round(forward_npv, 2),
+            total_project_npv=round(total_project_npv, 2),
+            irr=round(irr, 4) if irr is not None else None,
+            forward_roi=round(forward_roi, 4),
+            total_roi=round(total_roi, 4),
+            payback_period_years=round(payback, 2) if payback is not None else None
+        )
