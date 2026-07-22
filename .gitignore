@@ -8,8 +8,9 @@ venv/
 .venv/
 env/
 
-# Streamlit
-.streamlit/
+# Streamlit (but keep the committed config that enables static file serving)
+.streamlit/*
+!.streamlit/config.toml
 
 # Environment secrets
 .env

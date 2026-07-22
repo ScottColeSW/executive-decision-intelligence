@@ -18,5 +18,5 @@ The system processes data through five distinct analytical lenses:
 *   **Provenance Engine:** The immutable record keeper. It tracks the lineage of data sources, assumptions, and LLM prompts used to reach a recommendation, ensuring complete auditability.
 
 ## 4. Technical Foundations
-*   **Flexible LLM Orchestration:** Agnostic abstraction layer supporting local inference engines (Ollama, LM Studio) alongside commercial APIs (OpenAI, Hugging Face).
-*   **Modular Architecture:** Strict separation between data schemas (Models), analytical pipelines (Engines), and presentation layers (UI Briefs).
+*   **LLM Integration:** Local Ollama inference via a configurable host (`OLLAMA_HOST`), with a deterministic offline fallback so the app degrades gracefully rather than failing when the model is unreachable. A pluggable provider abstraction (OpenAI, Hugging Face, LM Studio) is a plausible future extension, not a current capability — the shipped implementation is intentionally a single, well-tested path.
+*   **Modular Architecture:** Strict separation between analytical pipelines (Engines), the shared pipeline/rendering layer (`ui/executive_brief.py`), and presentation entry points (the case selector, the Ask EDI intake form, and the roadmap page).

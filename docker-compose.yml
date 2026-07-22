@@ -1,0 +1,12 @@
+services:
+  edi:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      # Docker Desktop (Windows/Mac) resolves this automatically. On Linux,
+      # the extra_hosts entry below maps it to the host gateway instead.
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,5 +1,6 @@
 import streamlit as st
 
+from ui.executive_brief import render_footer
 
 st.set_page_config(
     page_title="EDI Roadmap",
@@ -108,3 +109,5 @@ for version, items in roadmap:
             st.write("✓ " + item)
 
         st.divider()
+
+render_footer()

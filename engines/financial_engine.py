@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from models.decision_case import DecisionCase
+from data.cases import DecisionCase
 
 class FinancialAnalysisResult(BaseModel):
     case_id: str
@@ -10,6 +10,7 @@ class FinancialAnalysisResult(BaseModel):
     forward_roi: float = Field(..., description="Return on investment based solely on forward capital")
     total_roi: float = Field(..., description="Return on investment factoring in historical sunk costs")
     payback_period_years: Optional[float] = Field(None, description="Time required to recover forward investment")
+    forward_cash_flows: List[float] = Field(..., description="Year-indexed forward cash flow stream, year 0 = initial outlay")
 
 class FinancialEngine:
     """Processes DecisionCase models to output standardized corporate finance performance metrics."""
@@ -29,7 +30,6 @@ class FinancialEngine:
         low, high = -0.99, 5.0
         tolerance = 1e-6
 
-        # Check boundaries
         def npv_at(r: float) -> float:
             return sum(cf / ((1 + r) ** t) for t, cf in enumerate(cash_flows))
 
@@ -44,7 +44,7 @@ class FinancialEngine:
 
             if abs(npv_mid) < tolerance:
                 return mid
-            
+
             if npv_at(low) * npv_mid < 0:
                 high = mid
             else:
@@ -54,40 +54,42 @@ class FinancialEngine:
 
     def analyze(self, case: DecisionCase) -> FinancialAnalysisResult:
         """Executes full quantitative assessment on a given DecisionCase."""
-        f = case.financials
-        
+
+        # Annualized forward cash flow, consistent with the rest of the platform's convention
+        annual_cf = case.expected_return / max(1, case.horizon_years)
+
         # 1. Build cash flow streams
         # Forward flows: year 0 is the fresh initial investment out
-        forward_flows = [-f.initial_investment] + [f.projected_annual_return or 0.0] * f.time_horizon_years
-        
+        forward_flows = [-case.investment] + [annual_cf] * case.horizon_years
+
         # Total flows: treats sunk costs as an instantaneous loss incurred at Year 0 alongside new investment
-        total_investment = f.initial_investment + f.sunk_costs_to_date
-        total_flows = [-total_investment] + [f.projected_annual_return or 0.0] * f.time_horizon_years
+        total_investment = case.investment + case.sunk_costs
+        total_flows = [-total_investment] + [annual_cf] * case.horizon_years
 
         # 2. Compute NPVs
-        forward_npv = self._calculate_npv(f.risk_adjusted_discount_rate, forward_flows)
-        total_project_npv = self._calculate_npv(f.risk_adjusted_discount_rate, total_flows)
+        forward_npv = self._calculate_npv(case.discount_rate, forward_flows)
+        total_project_npv = self._calculate_npv(case.discount_rate, total_flows)
 
         # 3. Compute IRR (Forward-looking)
         irr = self._calculate_irr(forward_flows)
 
         # 4. Compute ROI Metrics
-        total_nominal_returns = (f.projected_annual_return or 0.0) * f.time_horizon_years
-        
+        total_nominal_returns = annual_cf * case.horizon_years
+
         forward_roi = (
-            (total_nominal_returns - f.initial_investment) / f.initial_investment 
-            if f.initial_investment > 0 else 0.0
+            (total_nominal_returns - case.investment) / case.investment
+            if case.investment > 0 else 0.0
         )
-        
+
         total_roi = (
-            (total_nominal_returns - total_investment) / total_investment 
+            (total_nominal_returns - total_investment) / total_investment
             if total_investment > 0 else 0.0
         )
 
         # 5. Compute Payback Period (Simple / Non-discounted)
         payback = None
-        if f.projected_annual_return and f.projected_annual_return > 0:
-            payback = f.initial_investment / f.projected_annual_return
+        if annual_cf > 0:
+            payback = case.investment / annual_cf
 
         return FinancialAnalysisResult(
             case_id=case.case_id,
@@ -96,5 +98,6 @@ class FinancialEngine:
             irr=round(irr, 4) if irr is not None else None,
             forward_roi=round(forward_roi, 4),
             total_roi=round(total_roi, 4),
-            payback_period_years=round(payback, 2) if payback is not None else None
+            payback_period_years=round(payback, 2) if payback is not None else None,
+            forward_cash_flows=[round(cf, 2) for cf in forward_flows]
         )

@@ -3,8 +3,12 @@ import json
 import requests
 from pathlib import Path
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2:latest"
+# Configurable via environment so the same image works bare-metal (default
+# localhost) or in Docker, where "localhost" would otherwise resolve to the
+# container itself instead of a host-installed Ollama.
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:latest")
 
 # Path to the newly decoupled prompts configuration file
 PROMPTS_CONFIG_PATH = Path("data") / "prompts_config.json"

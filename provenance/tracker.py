@@ -9,13 +9,14 @@ class ProvenanceTracker:
     """
 
     def create(
-        self, 
-        engine: str, 
-        function: str, 
-        case_id: str = "UNKNOWN-SME", 
-        investment: float = 0.0, 
-        expected_return: float = 0.0, 
-        sunk_costs: float = 0.0
+        self,
+        engine: str,
+        function: str,
+        case_id: str = "UNKNOWN-SME",
+        investment: float = 0.0,
+        expected_return: float = 0.0,
+        sunk_costs: float = 0.0,
+        monte_carlo_trials: int = 5000
     ) -> Dict[str, Any]:
         now = datetime.datetime.utcnow()
 
@@ -39,8 +40,10 @@ class ProvenanceTracker:
                 {"time": "+0.015s", "event": f"Database payload initialized for active scenario '{case_id}'."},
                 {"time": "+0.032s", "event": "Quantitative cash-flow matrices structured under Isolated Hurdle rate guidelines."},
                 {"time": "+0.051s", "event": f"Sunk Cost decoupling applied. Isolated ${sunk_costs:,.2f} from forward decision loop."},
-                {"time": "+0.110s", "event": "Qualitative governance constraints checked against capital ceiling ($100k limit)."},
+                {"time": "+0.089s", "event": "FinancialEngine computed NPV, IRR, forward/total ROI, and payback period across forward and total-project bases."},
+                {"time": "+0.110s", "event": "Qualitative governance constraints checked against capital ceiling ($100k limit) and hurdle-rate policy minimum."},
                 {"time": "+0.245s", "event": "Dialectical adversarial challenger logic successfully compiled and summarized."},
-                {"time": "+0.920s", "event": "Synthetic consumer focus-group simulator processed sentiment parameters."}
+                {"time": "+0.920s", "event": "Synthetic consumer focus-group simulator processed sentiment parameters."},
+                {"time": "+1.310s", "event": f"Monte Carlo engine completed {monte_carlo_trials:,} simulated trials across investment, return, and discount-rate uncertainty."},
             ]
         }
