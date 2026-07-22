@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 class DecisionCase:
     """Represents a structured operational scenario for small business decision analysis."""
@@ -16,7 +16,8 @@ class DecisionCase:
         discount_rate_basis: str = "",
         assumptions: Optional[List[str]] = None,
         current_state: str = "",
-        ai_workflow: str = ""
+        ai_workflow: str = "",
+        alternative_path: Optional[Dict[str, Any]] = None
     ):
         self.case_id = case_id
         self.title = title
@@ -34,6 +35,10 @@ class DecisionCase:
         self.assumptions = assumptions or []
         self.current_state = current_state
         self.ai_workflow = ai_workflow
+        # Optional second financing structure for the same opportunity (e.g. lease vs. buy).
+        # Keys: label, primary_label, investment, expected_return, discount_rate, horizon_years.
+        # Only investment is required; everything else falls back to the primary path's values.
+        self.alternative_path = alternative_path
 
 CASES: Dict[str, DecisionCase] = {
     "Hydro-Jetter Service Van Expansion (CapEx)": DecisionCase(
@@ -141,5 +146,77 @@ CASES: Dict[str, DecisionCase] = {
             "approves the spend; EDI just makes sure the approval is based on numbers instead of "
             "a gut feeling."
         )
+    ),
+    "Premium POS Vendor Pitch (Vendor Pressure)": DecisionCase(
+        case_id="SME-VENDOR-004",
+        title="Premium All-in-One POS & Inventory Platform",
+        question="Should we sign a 3-year contract for the premium point-of-sale and inventory platform our vendor rep has been pushing, replacing our current system?",
+        company="A specialty retail shop running a functional, unglamorous POS system. A vendor rep has spent months courting the owner with a slick demo, bundled hardware, and a 'limited-time' discount that expires this week.",
+        investment=32000.0,
+        expected_return=30000.0,
+        sunk_costs=0.0,
+        horizon_years=3,
+        discount_rate=0.09,
+        discount_rate_basis=(
+            "Discretionary opex-style purchase with no dedicated financing behind it — "
+            "approximates prime plus a standard risk premium. Manually set for this demo, "
+            "not pulled from a live rate feed."
+        ),
+        assumptions=[
+            "The platform's claimed efficiency gains materialize as advertised by the vendor.",
+            "Staff adopt the new system without a costly retraining slowdown.",
+            "The 'limited-time' discount pricing would not have been available later anyway."
+        ],
+        current_state=(
+            "The owner is being worked by a well-rehearsed sales process — a slick demo, bundled "
+            "hardware, and a countdown-timer discount — with no independent framework for "
+            "separating a genuinely good deal from a well-produced pitch. The current system isn't "
+            "broken; the appeal here is entirely emotional and manufactured urgency."
+        ),
+        ai_workflow=(
+            "EDI runs the vendor's own claimed numbers through the same financial model it applies "
+            "to organic ideas, with no special treatment for how good the pitch felt. The owner "
+            "still decides whether to sign — but they decide after seeing whether the math clears "
+            "the hurdle rate, not just after watching a good demo."
+        )
+    ),
+    "Delivery Van: Lease vs. Buy (Financing Comparison)": DecisionCase(
+        case_id="SME-LEASE-005",
+        title="Delivery Van for Corporate Catering Expansion",
+        question="Should we finance a delivery van with a small-business auto loan, or lease it instead?",
+        company="A local bakery and catering business has steady demand to expand into corporate catering, but needs a dedicated delivery van to do it. The van itself is the bottleneck, not the demand.",
+        investment=14000.0,
+        expected_return=60000.0,
+        sunk_costs=0.0,
+        horizon_years=3,
+        discount_rate=0.075,
+        discount_rate_basis=(
+            "Approximates a small-business auto loan rate for the financed portion of the "
+            "purchase. Manually set for this demo, not pulled from a live rate feed."
+        ),
+        assumptions=[
+            "Incremental corporate catering revenue of roughly $20,000/year is achievable once the van is available.",
+            "Loan approval and vehicle delivery happen within 30 days.",
+            "Maintenance and insurance costs are comparable across the buy and lease paths."
+        ],
+        current_state=(
+            "The owner knows the catering opportunity is real — corporate clients have already "
+            "asked — but is stuck comparing a lease quote and a loan quote on gut feel, with no "
+            "clean way to see which one actually preserves more value over the life of the deal."
+        ),
+        ai_workflow=(
+            "EDI runs both financing paths through the identical model — same revenue opportunity, "
+            "different cost structure — and shows NPV, IRR, and payback for each side by side. The "
+            "owner still picks the financing; EDI just makes sure a lower monthly payment isn't "
+            "mistaken for a better deal."
+        ),
+        alternative_path={
+            "primary_label": "Buy (Loan-Financed)",
+            "label": "Lease (36-month)",
+            "investment": 3000.0,
+            "expected_return": 36600.0,
+            "discount_rate": 0.075,
+            "horizon_years": 3,
+        }
     )
 }

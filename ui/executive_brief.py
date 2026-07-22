@@ -44,6 +44,8 @@ DEMAND_SIGNALS = {
     "SME-CAPEX-001": {"score": 78, "verdict": "GO", "note": "Strong demand for premium response times"},
     "SME-SUNK-002": {"score": 42, "verdict": "NO-GO", "note": "High customer friction; recommend turnkey alternative"},
     "SME-AI-003": {"score": 89, "verdict": "GO", "note": "Extreme demand pull; plugs structural revenue leak"},
+    "SME-VENDOR-004": {"score": 22, "verdict": "NO-GO", "note": "Customers see zero difference at checkout; the upgrade solves an owner-side annoyance, not a customer-facing gap"},
+    "SME-LEASE-005": {"score": 82, "verdict": "GO", "note": "Strong existing corporate catering demand; the van is the bottleneck, not the financing terms"},
 }
 DEFAULT_DEMAND_SIGNAL = {"score": 60, "verdict": "GO", "note": "Stable baseline metrics"}
 
@@ -53,6 +55,7 @@ def run_analysis(case: DecisionCase) -> Dict[str, Any]:
 
     result = recommendation_engine.evaluate(case)
     financials = financial_engine.analyze(case)
+    financials_alt = financial_engine.analyze_alternative(case)
     uncertainty = uncertainty_engine.analyze(case, result)
     monte_carlo = uncertainty_engine.simulate(case, trials=MONTE_CARLO_TRIALS)
     ai_analysis = decision_analyst.analyze(case, result, uncertainty, monte_carlo)
@@ -105,6 +108,7 @@ Please run the debate focus group.
         "case": case,
         "result": result,
         "financials": financials,
+        "financials_alt": financials_alt,
         "uncertainty": uncertainty,
         "monte_carlo": monte_carlo,
         "ai_analysis": ai_analysis,
@@ -121,6 +125,7 @@ def render_analysis(analysis: Dict[str, Any]) -> None:
     case = analysis["case"]
     result = analysis["result"]
     financials = analysis["financials"]
+    financials_alt = analysis["financials_alt"]
     monte_carlo = analysis["monte_carlo"]
     ai_analysis = analysis["ai_analysis"]
     governance = analysis["governance"]
@@ -243,6 +248,38 @@ def render_analysis(analysis: Dict[str, Any]) -> None:
             f"**Rate assumption:** {case.discount_rate * 100:.1f}% — {case.discount_rate_basis} "
             f"(Horizon: {case.horizon_years} years)"
         )
+
+        if financials_alt is not None:
+            alt = case.alternative_path
+            primary_label = alt.get("primary_label", "Primary Plan")
+            alt_label = alt.get("label", "Alternative Plan")
+
+            st.divider()
+            st.markdown(f"**Financing Comparison: {primary_label} vs. {alt_label}**")
+            st.caption("Same underlying opportunity, two different capital structures — run through the identical model, not eyeballed.")
+
+            comp_df = pd.DataFrame({
+                "Path": [primary_label, alt_label],
+                "Upfront Investment": [f"${case.investment:,.0f}", f"${alt['investment']:,.0f}"],
+                "Forward NPV": [f"${financials.forward_npv:,.0f}", f"${financials_alt.forward_npv:,.0f}"],
+                "IRR": [
+                    f"{financials.irr * 100:.1f}%" if financials.irr is not None else "N/A",
+                    f"{financials_alt.irr * 100:.1f}%" if financials_alt.irr is not None else "N/A",
+                ],
+                "Payback": [
+                    f"{financials.payback_period_years:.1f} yrs" if financials.payback_period_years is not None else "N/A",
+                    f"{financials_alt.payback_period_years:.1f} yrs" if financials_alt.payback_period_years is not None else "N/A",
+                ],
+            })
+            st.dataframe(comp_df, hide_index=True, use_container_width=True)
+
+            winner_label = primary_label if financials.forward_npv >= financials_alt.forward_npv else alt_label
+            npv_gap = abs(financials.forward_npv - financials_alt.forward_npv)
+            st.info(
+                f"**{winner_label}** preserves more value over the {case.horizon_years}-year horizon "
+                f"(NPV advantage of ${npv_gap:,.0f}) — even if it isn't the option with the lower upfront "
+                "cost or the lower monthly payment. Lower monthly isn't the same as a better deal."
+            )
 
     # ---------------------------------------------------------
     # Risk & Uncertainty (named risk factors + Monte Carlo, in one place)

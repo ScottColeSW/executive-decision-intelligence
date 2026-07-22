@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from data.cases import DecisionCase
@@ -101,3 +102,23 @@ class FinancialEngine:
             payback_period_years=round(payback, 2) if payback is not None else None,
             forward_cash_flows=[round(cf, 2) for cf in forward_flows]
         )
+
+    def analyze_alternative(self, case: DecisionCase) -> Optional[FinancialAnalysisResult]:
+        """
+        If the case defines a second financing structure for the same opportunity
+        (e.g. lease vs. buy), analyzes it through the identical model as the primary
+        path so the two are directly comparable rather than eyeballed.
+        """
+        if not case.alternative_path:
+            return None
+
+        alt = case.alternative_path
+        shadow_case = SimpleNamespace(
+            case_id=f"{case.case_id}-ALT",
+            investment=alt["investment"],
+            expected_return=alt.get("expected_return", case.expected_return),
+            sunk_costs=0.0,
+            horizon_years=alt.get("horizon_years", case.horizon_years),
+            discount_rate=alt.get("discount_rate", case.discount_rate),
+        )
+        return self.analyze(shadow_case)

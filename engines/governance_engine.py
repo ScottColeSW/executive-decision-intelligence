@@ -14,12 +14,16 @@ class GovernanceEngine:
         "CAPEX": "Equipment insurance and liability coverage must be confirmed before asset purchase.",
         "SUNK": "Vendor/agency performance clause should be reviewed before authorizing a final milestone payment.",
         "AI": "Third-party data handling and customer-consent policy review required before deployment.",
+        "VENDOR": "Independently verify vendor-claimed performance figures before signing a multi-year contract; treat urgency-driven pricing as a red flag, not a reason to skip review.",
+        "LEASE": "Confirm early-termination penalties and total cost of ownership across every financing structure before signing.",
     }
 
     CATEGORY_LABELS = {
         "CAPEX": "CapEx",
         "SUNK": "Sunk Cost",
         "AI": "AI",
+        "VENDOR": "Vendor Contract",
+        "LEASE": "Financing",
     }
 
     def review(self, case: DecisionCase) -> List[Dict[str, str]]:
