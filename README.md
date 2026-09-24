@@ -1,5 +1,6 @@
 # 🧠 Executive Decision Intelligence (EDI)
 
+[![License](https://img.shields.io/github/license/ScottColeSW/executive-decision-intelligence)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/ScottColeSW/executive-decision-intelligence)](https://github.com/ScottColeSW/executive-decision-intelligence/releases/latest)
 
 > **Democratizing Institutional-Grade Capital Governance & Synthetic Market Validation for SMEs**
